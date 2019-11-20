@@ -128,11 +128,13 @@ public class KubectlBuildWrapper extends SimpleBuildWrapper {
             }
             return;
         }
-
+        boolean isToken = false;
         if (c instanceof StringCredentials) {
             login = "--token=" + ((StringCredentials) c).getSecret().getPlainText();
+            isToken = true;
         } else if (c instanceof TokenProducer) {
             login = "--token=" + ((TokenProducer) c).getToken(serverUrl, null, true);
+            isToken = true;
         } else if (c instanceof UsernamePasswordCredentials) {
             UsernamePasswordCredentials upc = (UsernamePasswordCredentials) c;
             login = "--username=" + upc.getUsername() + " --password=" + Secret.toString(upc.getPassword());
@@ -156,6 +158,7 @@ public class KubectlBuildWrapper extends SimpleBuildWrapper {
                 tempFiles.add(clientKeyFile.getRemote());
                 login = "--client-certificate=" + clientCrtFile.getRemote() + " --client-key="
                         + clientKeyFile.getRemote();
+                isToken = true;
             } catch (KeyStoreException e) {
                 throw new AbortException(e.getMessage());
             } catch (UnrecoverableKeyException e) {
@@ -171,8 +174,9 @@ public class KubectlBuildWrapper extends SimpleBuildWrapper {
 
         status = launcher.launch()
                 .cmdAsSingleString("kubectl config --kubeconfig=\"" + configFile.getRemote() + "\" set-credentials cluster-admin " + login)
-                .masks(false, false, false, false, false, false, true)
+                .masks(false, false, false, false, false, isToken, true)
                 .join();
+
         if (status != 0) throw new IOException("Failed to run kubectl config "+status);
 
         status = launcher.launch()
